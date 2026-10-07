@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Controle - Engenharia | versao: supabase-js v3 -->
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Controle - Engenharia</title>
@@ -43,6 +44,7 @@ label{display:block;margin:10px 0 4px;color:var(--g);font-size:13px}label+input,
 </style></head><body>
 <nav id="nav"></nav><main id="v"></main><div id="md"><div id="mc"></div></div><div id="lb" onclick="this.style.display='none'" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:30;padding:12px"><img id="lbi" alt="" style="max-width:100%;max-height:100%;border-radius:8px"></div>
 <script>
+console.log('Controle - Engenharia | versão: supabase-js v3');
 const $=s=>document.querySelector(s),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ST=['Stand By','Não Iniciado','Em Andamento','Concluído','Cancelado'],SC=['sb','ni','ea','ok','ca'],PR=['Baixa','Média','Alta','Crítica'];
 const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)},today=day(0),uid=()=>Math.random().toString(36).slice(2,9);
