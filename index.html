@@ -190,7 +190,9 @@ S.team.splice(i,1);P().concat(S.studies).forEach(x=>{if(x.owner>i)x.owner--});sa
 function xp(){const r=[['Projeto','Cliente','Responsável','Início','Prazo','Prioridade','Status','Avanço %','Risco']].concat(P().map(x=>[x.name,x.client,S.team[x.owner],x.start,x.end,x.prio,x.status,x.progress,x.risk]));
 const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='projetos.csv';a.click()}
 
-const SB_PROJECT='https://tjnpuwmfxmrgknyuzpyx.supabase.co',SB_TABLE='Projetos',SB_KEY='sb_publishable_K6BbEhDXUOTNdcetlyuCnA_iDGZ59-5';
+const SB_PROJECT='https://tjnpuwmfxmrgknyuzpyx.supabase.co';
+const SB_TABLE='Projetos';
+const SB_KEY='sb_publishable_K6BbEhDXUOTNdcetlyuCnA_iDGZ59-5';
 const SQL_COLS="alter table public.\"Projetos\" add column if not exists tipo text default 'projeto', add column if not exists dados jsonb default '{}'::jsonb;\nnotify pgrst, 'reload schema';",
 SQL_RLS="alter table public.\"Projetos\" enable row level security;\ncreate policy \"acesso_site\" on public.\"Projetos\" for all to anon using (true) with check (true);";
 const supabaseClient=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SB_PROJECT,SB_KEY):null;
