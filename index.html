@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle - Engenharia</title>
+<style>
+:root{color-scheme:light;--k:#1C2230;--g:#4D5B64;--l:#DCE1E2;--w:#fff;--t:#F1F3F3;--m:#98A3A5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--w);color:var(--k);font:14px/1.45 "Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;min-height:100vh}
+nav{width:220px;background:var(--w);border-right:1px solid var(--l);padding:20px 12px;position:sticky;top:0;height:100vh;flex-shrink:0}
+nav h1{font-size:15px;margin:0 8px 20px;letter-spacing:.2px}
+nav button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:10px;font:inherit;color:var(--g);cursor:pointer}
+nav button.on{background:var(--k);color:var(--w)}nav button:hover:not(.on){background:var(--l)}
+main{flex:1;min-width:0;padding:24px;max-width:1200px}
+h2{margin:0 0 16px;font-size:22px}h3{margin:0 0 10px;font-size:15px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.card{background:var(--w);border:1px solid var(--l);border-radius:14px;padding:14px}
+.kpi b{display:block;font-size:28px}.kpi span{color:var(--g)}
+button.b,input,select,textarea{font:inherit;border:1px solid var(--l);border-radius:10px;padding:8px 10px;background:var(--w);color:var(--k)}
+button.b{cursor:pointer}button.p{background:var(--k);color:var(--w);border-color:var(--k)}
+textarea{width:100%;min-height:64px}input,select{max-width:100%}
+:focus-visible{outline:2px solid var(--k);outline-offset:2px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--l)}th{color:var(--g);font-weight:600}
+.wrap{overflow-x:auto}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;color:var(--k)}
+.s-sb{background:#C9CFD0}.s-ni{background:#bcd7f7}.s-ea{background:#fbe38a}.s-ok{background:#b9e6c3}.s-ca{background:#f6b8b8}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.vd{background:#2ca44f}.am{background:#e6b800}.vm{background:#d93025}
+.hbar{display:flex;align-items:center;gap:8px;margin:6px 0}.hbar i{display:block;height:10px;background:var(--k);border-radius:6px}
+.hbar em{font-style:normal;min-width:110px;color:var(--g)}
+.col{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.lane{background:var(--t);border-radius:14px;padding:10px;min-height:120px}
+.lane.over{outline:2px dashed var(--g)}.lane h3{display:flex;justify-content:space-between}
+.item{background:var(--w);border:1px solid var(--l);border-radius:12px;padding:10px;margin-bottom:8px;cursor:pointer}
+.item[draggable=true]{cursor:grab}.item small{color:var(--g);display:block}
+.prog{height:8px;background:var(--l);border-radius:6px;overflow:hidden;margin-top:6px}.prog i{display:block;height:100%;background:var(--k)}
+#md{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:9}
+#md>div{background:var(--w);border-radius:16px;padding:20px;width:100%;max-width:640px}
+label{display:block;margin:10px 0 4px;color:var(--g);font-size:13px}label+input,label+select{width:100%}
+@media(max-width:760px){body{flex-direction:column}nav{width:100%;height:auto;position:sticky;top:0;z-index:5;display:flex;overflow-x:auto;padding:8px;gap:4px;border-right:0;border-bottom:1px solid var(--l)}nav h1{display:none}nav button{white-space:nowrap;width:auto}main{padding:14px}}
+</style></head><body>
+<nav id="nav"></nav><main id="v"></main><div id="md"><div id="mc"></div></div><div id="lb" onclick="this.style.display='none'" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:30;padding:12px"><img id="lbi" alt="" style="max-width:100%;max-height:100%;border-radius:8px"></div>
+<script>
+const $=s=>document.querySelector(s),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ST=['Stand By','Não Iniciado','Em Andamento','Concluído','Cancelado'],SC=['sb','ni','ea','ok','ca'],PR=['Baixa','Média','Alta','Crítica'];
+const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)},today=day(0),uid=()=>Math.random().toString(36).slice(2,9);
+const diff=d=>Math.round((new Date(d)-new Date(today))/864e5);
+let S;try{S=JSON.parse(localStorage.getItem('ctrl-eng'))}catch(e){}
+if(!S)S={team:['Colaborador 1','Colaborador 2','Colaborador 3','Colaborador 4'],
+projects:[{id:uid(),name:'Projeto A',client:'Cliente Alfa',owner:0,start:day(-30),end:day(20),prio:'Alta',status:'Em Andamento',desc:'',progress:55,adv:'',att:'',next:'',risk:'Médio',acts:[{t:'Levantamento',o:0,s:day(-30),e:day(-10),st:'Concluída',p:100}]},
+{id:uid(),name:'Projeto B',client:'Cliente Beta',owner:0,start:day(-60),end:day(-5),prio:'Crítica',status:'Em Andamento',desc:'',progress:80,adv:'',att:'',next:'',risk:'Alto',acts:[]},
+{id:uid(),name:'Projeto C',client:'Cliente Gama',owner:1,start:day(-10),end:day(60),prio:'Média',status:'Não Iniciado',desc:'',progress:5,adv:'',att:'',next:'',risk:'Baixo',acts:[]},
+{id:uid(),name:'Projeto D',client:'Cliente Delta',owner:2,start:day(-90),end:day(-40),prio:'Baixa',status:'Concluído',done:day(-45),desc:'',progress:100,adv:'',att:'',next:'',risk:'Baixo',acts:[]},
+{id:uid(),name:'Projeto E',client:'Cliente Épsilon',owner:3,start:day(0),end:day(90),prio:'Média',status:'Stand By',desc:'',progress:0,adv:'',att:'',next:'',risk:'Baixo',acts:[]}],
+demands:[{id:uid(),created:day(-3),title:'Revisar memorial descritivo',desc:'',prio:'Alta',due:day(2),status:'Em andamento',hist:['Criada'],com:[]},
+{id:uid(),created:day(-8),title:'Emitir relatório de medição',desc:'',prio:'Média',due:day(-1),status:'Não iniciada',hist:['Criada'],com:[]},
+{id:uid(),created:day(-12),title:'Atualizar cronograma',desc:'',prio:'Baixa',due:day(14),status:'Concluída',hist:['Criada'],com:[],done:day(-2)}]};
+S.studies=S.studies||[];
+S.cols=S.cols||[{n:'Não iniciada'},{n:'Em andamento'},{n:'Concluída',f:1},{n:'Cancelada',f:1}];
+const DSn=()=>S.cols.map(c=>c.n),fin=n=>!!(S.cols.find(c=>c.n==n)||{}).f;
+const SHARED=false; // compartilhamento desativado por enquanto (mude para true para reativar)
+let DB,ME,ready=false,LOC=null,last={},q={},pend={};
+const save=()=>{if(DB){sync();return}try{localStorage.setItem('ctrl-eng',JSON.stringify(S))}catch(e){toast('Armazenamento do navegador cheio: remova algumas fotos antigas.')}};
+let view='dash',dmode='kanban',F={q:'',p:'',s:'',d:''},CF={q:'',y:'',c:''};
+const late=p=>!['Concluído','Cancelado'].includes(p.status)&&p.end<today;
+const health=p=>late(p)||(p.risk=='Alto'&&p.progress<70)?'vm':(!['Concluído','Cancelado'].includes(p.status)&&(diff(p.end)<=7||p.risk=='Alto'))?'am':'vd';
+const dl=d=>{const n=diff(d.due);return fin(d.status)?'':n<0?'vm':n<=3?'am':'vd'};
+const tag=s=>`<span class="tag s-${SC[ST.indexOf(s)]}">${s}</span>`;
+const items=[['dash','Dashboard'],['dp','Demandas Pessoais'],['eq','Demandas da Equipe'],['ok','Projetos Concluídos'],['ind','Indicadores'],['cfg','Configurações']];
+function go(v){view=v;$('#nav').innerHTML='<h1>Controle - Engenharia</h1>'+items.map(i=>`<button class="${i[0]==v?'on':''}" onclick="go('${i[0]}')">${i[1]}</button>`).join('');
+$('#v').innerHTML=({dash,dp,eq,ok,ind,cfg})[v]();}
+function open_(h){$('#mc').innerHTML=h;$('#md').style.display='flex'}function close_(){$('#md').style.display='none';go(view)}
+$('#md').onclick=e=>{if(e.target.id=='md')close_()};
+const hb=(rows)=>{const m=Math.max(1,...rows.map(r=>r[1]));return rows.map(r=>`<div class="hbar"><em>${E(r[0])}</em><i style="width:${r[1]/m*60}%;min-width:4px"></i><b>${r[1]}</b></div>`).join('')};
+const P=()=>S.projects,D=()=>S.demands,fi=id=>P().find(p=>p.id===id)||S.studies.find(t=>t.id===id);
+function dash(){const p=P(),d=D(),pa=p.filter(x=>x.status=='Em Andamento').length,lt=p.filter(late);
+const k=[['Total de projetos',p.length],['Em andamento',pa],['Concluídos',p.filter(x=>x.status=='Concluído').length],['Em atraso',lt.length],['Estudos em andamento',S.studies.filter(x=>x.status=='Em Andamento').length],['Estudos concluídos',S.studies.filter(x=>x.status=='Concluído').length]];
+const mo={};p.filter(x=>x.done).forEach(x=>{const m=x.done.slice(0,7);mo[m]=(mo[m]||0)+1});
+return `<h2>Dashboard</h2><div class="grid">${k.map(x=>`<div class="card kpi"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
+<div class="grid g2"><div class="card"><h3>Projetos por status</h3>${hb(ST.map(s=>[s,p.filter(x=>x.status==s).length]))}</div>
+<div class="card"><h3>Projetos por colaborador</h3>${hb(S.team.map((n,i)=>[n,p.filter(x=>x.owner==i).length]))}</div>
+<div class="card"><h3>Conclusões por mês</h3>${Object.keys(mo).sort().length?hb(Object.keys(mo).sort().map(m=>[m,mo[m]])):'<span>Nenhuma conclusão registrada.</span>'}</div>
+<div class="card"><h3>Projetos em atraso</h3>${lt.length?lt.map(x=>`<div class="item" onclick="proj('${x.id}')"><b>${E(x.name)}</b><small>${E(S.team[x.owner])} · ${-diff(x.end)} dias de atraso</small></div>`).join(''):'<span>Nenhum projeto em atraso.</span>'}</div></div>
+<div class="card wrap"><h3>Resumo da equipe</h3>${teamTable()}</div>`}
+function teamTable(){return `<table><tr><th>Colaborador</th><th>Demandas abertas</th><th>Em atraso</th><th>Concluídas</th><th>Estudos abertos</th></tr>${S.team.map((n,i)=>{const ps=P().filter(x=>x.owner==i);return `<tr><td>${E(n)}</td><td>${ps.filter(x=>!['Concluído','Cancelado'].includes(x.status)).length}</td><td>${ps.filter(late).length}</td><td>${ps.filter(x=>x.status=='Concluído').length}</td><td>${S.studies.filter(x=>x.owner==i&&!['Concluído','Cancelado'].includes(x.status)).length}</td></tr>`}).join('')}</table>`}
+function dp(){let l=D().filter(x=>(!F.p||x.prio==F.p)&&(!F.s||x.status==F.s)&&(!F.q||(x.title+x.desc).toLowerCase().includes(F.q.toLowerCase()))&&(!F.d||(F.d=='atraso'?dl(x)=='vm':F.d=='semana'?diff(x.due)>=0&&diff(x.due)<=7:true)));
+const card=x=>`<div class="item" draggable="true" ondragstart="dd='${x.id}'" onclick="dem('${x.id}')"><span class="dot ${dl(x)}"></span><b>${E(x.title)}</b>${x.desc?`<small>${E(x.desc.slice(0,70))}</small>`:''}<small>${x.prio} · prazo ${x.due.split('-').reverse().join('/')}</small></div>`;
+return `<h2>Demandas Pessoais</h2><div class="bar"><button class="b p" onclick="dem()">Nova demanda</button>
+<input placeholder="Pesquisar" value="${E(F.q)}" oninput="F.q=this.value;go('dp');$('#v input[placeholder]').focus()">
+<select onchange="F.p=this.value;go('dp')"><option value="">Prioridade</option>${PR.map(x=>`<option ${F.p==x?'selected':''}>${x}</option>`).join('')}</select>
+<select onchange="F.s=this.value;go('dp')"><option value="">Status</option>${DSn().map(x=>`<option ${F.s==x?'selected':''}>${x}</option>`).join('')}</select>
+<select onchange="F.d=this.value;go('dp')"><option value="">Prazo</option><option value="atraso" ${F.d=='atraso'?'selected':''}>Atrasadas</option><option value="semana" ${F.d=='semana'?'selected':''}>Próximos 7 dias</option></select>
+<button class="b" onclick="colAdd()">Nova coluna</button><button class="b" onclick="dmode=dmode=='kanban'?'tab':'kanban';go('dp')">${dmode=='kanban'?'Ver tabela':'Ver Kanban'}</button></div>`+soon()+
+(dmode=='kanban'?`<div class="col">${DSn().map((s,ci)=>`<div class="lane" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="mvD(${ci})"><h3><span>${E(s)}</span><span>${l.filter(x=>x.status==s).length} <a href="#" title="Renomear coluna" onclick="colEd(${ci});return false">✎</a> <a href="#" title="Excluir coluna" onclick="colRm(${ci});return false">×</a></span></h3>${l.filter(x=>x.status==s).map(card).join('')}<input placeholder="+ Adicionar cartão" style="width:100%" onkeydown="if(event.key=='Enter')qa(${ci},this.value)"></div>`).join('')}</div>`:
+`<div class="card wrap"><table><tr><th></th><th>Título</th><th>Criada</th><th>Prioridade</th><th>Prazo</th><th>Status</th></tr>${l.map(x=>`<tr onclick="dem('${x.id}')" style="cursor:pointer"><td><span class="dot ${dl(x)}"></span></td><td>${E(x.title)}</td><td>${x.created}</td><td>${x.prio}</td><td>${x.due}</td><td>${x.status}</td></tr>`).join('')}</table></div>`)}
+let dd;
+function toast(m){const t=document.createElement('div');t.textContent=m;t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--k);color:var(--w);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%';document.body.appendChild(t);setTimeout(()=>t.remove(),3500)}
+function colForm(i){open_(`<h3>${i<0?'Nova coluna':'Renomear coluna'}</h3><label>Nome da coluna</label><input id="cn" value="${i<0?'':E(S.cols[i].n)}"><div class="bar" style="margin-top:16px"><button class="b p" onclick="colSv(${i})">Salvar</button><button class="b" onclick="close_()">Fechar</button></div>`);$('#cn').focus()}
+function colAdd(){colForm(-1)}function colEd(i){colForm(i)}
+function colSv(i){const n=$('#cn').value.trim();if(!n)return toast('Digite um nome para a coluna.');const o=i<0?'':S.cols[i].n;if(n!=o&&DSn().includes(n))return toast('Já existe uma coluna com esse nome.');
+if(i<0)S.cols.push({n});else{D().forEach(x=>{if(x.status==o)x.status=n});if(F.s==o)F.s='';S.cols[i].n=n}save();close_()}
+function wipe(){open_(`<h3>Apagar todos os dados?</h3><p>Essa ação não pode ser desfeita.</p><div class="bar"><button class="b p" onclick="localStorage.removeItem('ctrl-eng');location.reload()">Apagar</button><button class="b" onclick="close_()">Cancelar</button></div>`)}
+function colRm(i){if(S.cols.length<2)return toast('É preciso manter ao menos uma coluna.');if(D().some(x=>x.status==S.cols[i].n))return toast('Mova os cartões desta coluna para outra antes de excluí-la.');S.cols.splice(i,1);save();go('dp')}
+function mvD(ci){const s=S.cols[ci].n,x=D().find(d=>d.id==dd);if(x&&x.status!=s){x.hist.push(`${today}: status → ${s}`);x.status=s;if(fin(s))x.done=x.done||today;else delete x.done;save()}go('dp')}
+function qa(ci,v){const s=S.cols[ci].n;v=v.trim();if(!v)return;D().push({id:uid(),created:today,title:v,desc:'',prio:'Média',due:day(7),status:s,hist:['Criada em '+today],com:[]});save();go('dp')}
+function soon(){const l=D().filter(x=>!fin(x.status)&&diff(x.due)>=0&&diff(x.due)<=3).sort((a,b)=>a.due.localeCompare(b.due));
+return `<div class="card" style="margin-bottom:16px"><h3>Vencem hoje ou nos próximos 3 dias</h3>${l.length?l.map(x=>`<div class="item" onclick="dem('${x.id}')"><span class="dot ${dl(x)}"></span><b>${E(x.title)}</b><small>${diff(x.due)==0?'Vence hoje':'Vence em '+diff(x.due)+' dia(s)'} · ${x.prio}</small></div>`).join(''):'<span>Nenhuma demanda vence nos próximos dias.</span>'}</div>`}
+function dem(id){const x=D().find(d=>d.id==id)||{title:'',desc:'',prio:'Média',due:day(7),status:S.cols[0].n,created:today,hist:[],com:[]};
+open_(`<h3>${id?'Demanda':'Nova demanda'}</h3><label>Título da demanda</label><input id="t" value="${E(x.title)}"><label>Descrição</label><textarea id="ds">${E(x.desc)}</textarea>
+<label>Prioridade</label><select id="pr">${PR.map(o=>`<option ${x.prio==o?'selected':''}>${o}</option>`).join('')}</select><label>Prazo</label><input type="date" id="du" value="${x.due}"><label>Status</label><select id="st">${DSn().map(o=>`<option ${x.status==o?'selected':''}>${o}</option>`).join('')}</select>
+${id?`<label>Comentários</label>${x.com.map(c=>`<div class="item">${E(c)}</div>`).join('')}<input id="cm" placeholder="Novo comentário" style="width:100%"><label>Histórico</label><small>${x.hist.map(E).join('<br>')}</small>`:''}
+<div class="bar" style="margin-top:16px"><button class="b p" onclick="svD('${id||''}')">Salvar</button>${id?`<button class="b" onclick="D().splice(D().findIndex(d=>d.id=='${id}'),1);save();close_()">Excluir</button>`:''}<button class="b" onclick="close_()">Fechar</button></div>`)}
+function svD(id){let x=D().find(d=>d.id==id);if(!x){x={id:uid(),created:today,hist:['Criada em '+today],com:[]};D().push(x)}
+const n={title:$('#t').value||'Sem título',desc:$('#ds').value,prio:$('#pr').value,due:$('#du').value,status:$('#st').value};
+Object.keys(n).forEach(k=>{if(id&&x[k]!=n[k])x.hist.push(`${today}: ${k} → ${n[k]}`)});Object.assign(x,n);if(fin(x.status))x.done=x.done||today;
+const c=$('#cm');if(c&&c.value)x.com.push(c.value);save();close_()}
+let drag;function eq(){return `<h2>Demandas da Equipe</h2><div class="bar"><button class="b p" onclick="proj()">Novo projeto</button><button class="b p" onclick="est()">Novo estudo</button></div><div class="col">${S.team.map((n,i)=>`<div class="lane" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="mv(${i})"><h3>${E(n)}<span>${P().filter(x=>x.owner==i&&x.status!='Concluído').length}</span></h3>${P().filter(x=>x.owner==i&&x.status!='Concluído').map(x=>`<div class="item" draggable="true" ondragstart="drag='${x.id}'" onclick="proj('${x.id}')"><span class="dot ${health(x)}" title="Saúde do projeto"></span><b>${E(x.name)}</b> ${tag(x.status)}<small>${E(x.client)} · prazo ${x.end.split('-').reverse().join('/')}</small><div class="prog"><i style="width:${x.progress}%"></i></div><div class="bar" style="margin:8px 0 0;gap:6px"><button class="b" style="padding:4px 10px" onclick="event.stopPropagation();sem('${x.id}',-1)">Semanal</button><button class="b" style="padding:4px 10px" onclick="event.stopPropagation();curva('${x.id}')">Curva S</button></div></div>`).join('')}${S.studies.filter(x=>x.owner==i).map(x=>`<div class="item" draggable="true" ondragstart="drag='${x.id}'" onclick="est('${x.id}')"><span class="tag" style="background:var(--l)">Estudo</span> <b>${E(x.name)}</b> ${tag(x.status)}<small>${E(x.client)} · prazo ${x.end.split('-').reverse().join('/')}</small><div class="bar" style="margin:8px 0 0;gap:6px"><button class="b" style="padding:4px 10px" onclick="event.stopPropagation();sem('${x.id}',-1)">Semanal</button><button class="b" style="padding:4px 10px" onclick="event.stopPropagation();curva('${x.id}')">Curva S</button></div></div>`).join('')}</div>`).join('')}</div><small>Arraste projetos e estudos entre colaboradores. Em celular, abra o projeto e troque o responsável.</small>`}
+function mv(i){const p=P().find(x=>x.id==drag)||S.studies.find(x=>x.id==drag);if(p){p.owner=i;save()}go('eq')}
+function est(id){const x=S.studies.find(s=>s.id==id)||{name:'',client:'',owner:0,start:today,end:day(30),prio:'Média',status:'Não Iniciado',desc:''};
+open_(`<h3>${id?'Estudo':'Novo estudo'}</h3><label>Nome do estudo</label><input id="n" value="${E(x.name)}"><label>Cliente</label><input id="c" value="${E(x.client)}">
+<label>Responsável</label><select id="o">${S.team.map((n,i)=>`<option value="${i}" ${x.owner==i?'selected':''}>${E(n)}</option>`).join('')}</select>
+<label>Data de início</label><input type="date" id="i" value="${x.start}"><label>Prazo final</label><input type="date" id="f" value="${x.end}">
+<label>Prioridade</label><select id="pr">${PR.map(e=>`<option ${x.prio==e?'selected':''}>${e}</option>`).join('')}</select>
+<label>Status</label><select id="st">${ST.map(e=>`<option ${x.status==e?'selected':''}>${e}</option>`).join('')}</select>
+<label>Descrição</label><textarea id="ds">${E(x.desc)}</textarea>
+<div class="bar" style="margin-top:16px"><button class="b p" onclick="svE('${id||''}')">Salvar</button>${id?`<button class="b" onclick="S.studies.splice(S.studies.findIndex(s=>s.id=='${id}'),1);save();close_()">Excluir</button>`:''}<button class="b" onclick="close_()">Fechar</button></div>`)}
+function svE(id){let x=S.studies.find(s=>s.id==id);if(!x){x={id:uid(),t:Date.now()};S.studies.push(x)}
+Object.assign(x,{name:$('#n').value||'Sem nome',client:$('#c').value,owner:+$('#o').value,start:$('#i').value,end:$('#f').value,prio:$('#pr').value,status:$('#st').value,desc:$('#ds').value});
+if(x.status=='Concluído')x.done=x.done||today;else delete x.done;save();close_()}
+function proj(id){const x=fi(id)||{name:'',client:'',owner:0,start:today,end:day(30),prio:'Média',status:'Não Iniciado',desc:'',progress:0,adv:'',att:'',next:'',risk:'Baixo',acts:[]};
+const o=(a,v)=>a.map((e,i)=>`<option value="${i}" ${v==e||v===i?'selected':''}>${e}</option>`).join('');
+open_(`<h3>${id?E(x.name):'Novo projeto'} ${id?`<span class="dot ${health(x)}"></span>`:''}</h3>
+<label>Nome do projeto</label><input id="n" value="${E(x.name)}"><label>Cliente</label><input id="c" value="${E(x.client)}">
+<label>Responsável</label><select id="o">${S.team.map((n,i)=>`<option value="${i}" ${x.owner==i?'selected':''}>${E(n)}</option>`).join('')}</select>
+<label>Data de início</label><input type="date" id="i" value="${x.start}"><label>Prazo final</label><input type="date" id="f" value="${x.end}">
+<label>Prioridade</label><select id="pr">${PR.map(e=>`<option ${x.prio==e?'selected':''}>${e}</option>`).join('')}</select>
+<label>Status</label><select id="st">${ST.map(e=>`<option ${x.status==e?'selected':''}>${e}</option>`).join('')}</select>
+<label>Risco</label><select id="rk">${['Baixo','Médio','Alto'].map(e=>`<option ${x.risk==e?'selected':''}>${e}</option>`).join('')}</select>
+<label>Avanço físico: <b id="pv">${x.progress}</b>%</label><input type="range" id="pg" min="0" max="100" value="${x.progress}" style="width:100%;padding:0" oninput="pv.textContent=this.value"><small>Última atualização: ${x.upd||'—'}</small>
+<label>Descrição</label><textarea id="ds">${E(x.desc)}</textarea><label>Principais avanços</label><textarea id="av">${E(x.adv)}</textarea>
+<label>Pontos de atenção</label><textarea id="at">${E(x.att)}</textarea><label>Próximos passos</label><textarea id="nx">${E(x.next)}</textarea>
+${id?`<label>Atividades</label>${x.acts.map((a,j)=>`<div class="item">${E(a.t)} · ${E(S.team[a.o])} · ${a.st} · ${a.p}%<small>${a.s} → ${a.e} <a href="#" onclick="fi('${id}').acts.splice(${j},1);save();proj('${id}');return false">remover</a></small></div>`).join('')}
+<div class="bar"><input id="at1" placeholder="Nova atividade"><select id="ao">${S.team.map((n,i)=>`<option value="${i}">${E(n)}</option>`).join('')}</select><button class="b" onclick="addA('${id}')">Adicionar</button></div>`:''}
+<div class="bar" style="margin-top:16px"><button class="b p" onclick="svP('${id||''}')">Salvar</button>${id?`<button class="b" onclick="P().splice(P().findIndex(p=>p.id=='${id}'),1);save();close_()">Excluir</button>`:''}<button class="b" onclick="close_()">Fechar</button></div>`)}
+function addA(id){const x=fi(id),t=$('#at1').value;if(!t)return;x.acts.push({t,o:+$('#ao').value,s:today,e:x.end,st:'Não iniciada',p:0});save();proj(id)}
+function svP(id){let x=fi(id);if(!x){x={id:uid(),t:Date.now(),acts:[]};P().push(x)}
+Object.assign(x,{name:$('#n').value||'Sem nome',client:$('#c').value,owner:+$('#o').value,start:$('#i').value,end:$('#f').value,prio:$('#pr').value,status:$('#st').value,risk:$('#rk').value,progress:+$('#pg').value,desc:$('#ds').value,adv:$('#av').value,att:$('#at').value,next:$('#nx').value,upd:today});
+if(x.status=='Concluído'){x.done=x.done||today;x.progress=100}else delete x.done;save();close_()}
+function ok(){const l=P().filter(x=>x.status=='Concluído'&&(!CF.q||(x.name+x.client).toLowerCase().includes(CF.q.toLowerCase()))&&(!CF.y||(x.done||'').startsWith(CF.y))&&(CF.c===''||x.owner==CF.c));
+const ys=[...new Set(P().filter(x=>x.done).map(x=>x.done.slice(0,4)))];
+return `<h2>Projetos Concluídos</h2><div class="bar"><input placeholder="Pesquisar" value="${E(CF.q)}" onchange="CF.q=this.value;go('ok')"><select onchange="CF.y=this.value;go('ok')"><option value="">Ano</option>${ys.map(y=>`<option ${CF.y==y?'selected':''}>${y}</option>`).join('')}</select><select onchange="CF.c=this.value;go('ok')"><option value="">Colaborador</option>${S.team.map((n,i)=>`<option value="${i}" ${CF.c==i&&CF.c!==''?'selected':''}>${E(n)}</option>`).join('')}</select></div>
+<div class="card wrap"><table><tr><th>Projeto</th><th>Cliente</th><th>Responsável</th><th>Início</th><th>Concluído em</th><th></th></tr>${l.map(x=>`<tr style="cursor:pointer" onclick="proj('${x.id}')"><td>${E(x.name)}</td><td>${E(x.client)}</td><td>${E(S.team[x.owner])}</td><td>${x.start}</td><td>${x.done}</td><td><button class="b" style="padding:4px 10px" onclick="event.stopPropagation();sem('${x.id}',-1)">Semanal</button></td></tr>`).join('')||'<tr><td colspan=6>Nenhum projeto concluído encontrado.</td></tr>'}</table></div>`}
+function ind(){const p=P(),s=S.studies,all=p.concat(s),c=all.filter(x=>x.done),dm=D().filter(x=>x.status=='Concluída'),n=c.length,
+avg=n?Math.round(c.reduce((a,x)=>a+(new Date(x.done)-new Date(x.start))/864e5,0)/n):0,ot=c.filter(x=>x.done<=x.end).length,
+dl_=dm.length?Math.round(dm.reduce((a,x)=>a+(new Date(x.done||today)-new Date(x.created))/864e5,0)/dm.length):0;
+const k=[['Total de projetos',p.length],['Total de estudos',s.length],['Estudos em andamento',s.filter(x=>x.status=='Em Andamento').length],['Estudos concluídos',s.filter(x=>x.status=='Concluído').length],['Cancelados (projetos e estudos)',all.filter(x=>x.status=='Cancelado').length],['Em atraso (projetos e estudos)',all.filter(late).length],['Prazo médio de conclusão (dias)',avg],['Cumprimento de prazo',(n?Math.round(ot/n*100):0)+'%']];
+return `<h2>Indicadores</h2><div class="grid">${k.map(x=>`<div class="card kpi"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
+<div class="grid g2"><div class="card"><h3>Projetos e estudos entregues por colaborador</h3>${hb(S.team.map((n,i)=>[n,c.filter(x=>x.owner==i).length]))}</div>
+<div class="card"><h3>Carga de trabalho (projetos e estudos ativos)</h3>${hb(S.team.map((n,i)=>[n,all.filter(x=>x.owner==i&&!['Concluído','Cancelado'].includes(x.status)).length]))}</div></div><div class="card wrap"><h3>Equipe</h3>${teamTable()}</div>`}
+function cfg(){return `<h2>Configurações</h2><div class="card"><h3>Equipe</h3>${S.team.map((n,i)=>`<div class="bar" style="margin-bottom:8px"><input value="${E(n)}" oninput="S.team[${i}]=this.value" onchange="S.team[${i}]=this.value;save()"><button class="b" onclick="rmC(${i})">Remover</button></div>`).join('')}<button class="b p" onclick="S.team.push('Colaborador '+(S.team.length+1));save();go('cfg')">Adicionar colaborador</button></div><br>
+<div class="card"><h3>Dados</h3><p>${DB?'Dados compartilhados com o time. As demandas pessoais ficam privadas para cada pessoa.':'Salvos neste navegador (modo local).'}</p><button class="b" onclick="xp()">Exportar projetos (CSV/Excel)</button> ${DB?'<button class="b" onclick="impAsk()">Importar dados deste navegador</button>':'<button class="b" onclick="wipe()">Apagar dados</button>'}</div>`}
+function sem(id,ei){const x=fi(id);x.weeks=x.weeks||[];x.weeks.sort((a,b)=>b.d.localeCompare(a.d));
+WPH=ei>=0&&x.weeks[ei].photos?x.weeks[ei].photos.slice():[];
+const e=ei>=0?x.weeks[ei]:null,f=e||(x.weeks.length?{d:today,adv:'',att:'',next:'',p:'',r:''}:{d:today,adv:x.adv||'',att:x.att||'',next:x.next||'',p:'',r:''}),fd=d=>d.split('-').reverse().join('/');
+open_(`<h3>Atualização semanal · ${E(x.name)}</h3><div class="card" style="margin-bottom:16px"><h3>${e?'Editar semana de '+fd(e.d):'Nova atualização'}</h3>
+<label>Data da semana</label><input type="date" id="wd" value="${f.d}"><label>Avanço físico (%)</label><div class="bar" style="margin:0"><span>Previsto</span><input type="number" min="0" max="100" id="wp" value="${f.p}" style="width:80px"><span>Realizado</span><input type="number" min="0" max="100" id="wr" value="${f.r}" style="width:80px"></div>
+<label>Principais avanços</label><textarea id="wa">${E(f.adv)}</textarea>
+<label>Pontos de atenção</label><textarea id="wt">${E(f.att)}</textarea>
+<label>Próximos passos</label><textarea id="wn">${E(f.next)}</textarea>
+<label>Fotos</label><div ondragover="event.preventDefault()" ondrop="event.preventDefault();addPh(event.dataTransfer.files)" style="border:1px dashed var(--m);border-radius:12px;padding:10px"><input type="file" accept="image/*" multiple onchange="addPh(this.files)" style="border:0;padding:0"><div id="wph" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"></div><small style="color:var(--g)">Arraste imagens para cá ou escolha arquivos. Elas são reduzidas automaticamente.</small></div>
+<div class="bar" style="margin-top:12px"><button class="b p" onclick="svW('${id}',${ei})">${e?'Salvar alterações':'Salvar semana'}</button>${e?`<button class="b" onclick="sem('${id}',-1)">Cancelar edição</button>`:''}</div></div>
+<h3>Histórico (${x.weeks.length})</h3>${x.weeks.map((w,i)=>`<div class="item" style="cursor:default"><b>${fd(w.d)}</b><small><b>Avanço físico:</b> previsto ${w.p===''?'—':w.p+'%'} · realizado ${w.r===''?'—':w.r+'%'}</small>${w.r!==''?`<div class="prog"><i style="width:${w.r}%"></i></div>`:''}${[['Principais avanços',w.adv],['Pontos de atenção',w.att],['Próximos passos',w.next]].map(a=>a[1]?`<small><b>${a[0]}:</b> <span style="white-space:pre-wrap">${E(a[1])}</span></small>`:'').join('')}${(w.photos||[]).length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${w.photos.map((d,k)=>`<img src="${d}" alt="Foto ${k+1}" onclick="zoom('${id}',${i},${k})" style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in">`).join('')}</div>`:''}<div class="bar" style="margin:8px 0 0"><button class="b" style="padding:4px 10px" onclick="sem('${id}',${i})">Editar</button><button class="b" style="padding:4px 10px" onclick="delW('${id}',${i})">Excluir</button></div></div>`).join('')||'<span>Nenhuma atualização registrada.</span>'}
+<div class="bar" style="margin-top:16px"><button class="b" onclick="curva('${id}')">Ver Curva S</button><button class="b" onclick="close_()">Fechar</button></div>`);phr()}
+let WPH=[];
+function rz(f){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,900/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.7))};im.onerror=()=>res(null);im.src=r.result};r.onerror=()=>res(null);r.readAsDataURL(f)})}
+async function addPh(fl){for(const f of [...fl]){if(!f.type.startsWith('image/'))continue;const d=await rz(f);if(d)WPH.push(d)}phr()}
+function phr(){const el=$('#wph');if(el)el.innerHTML=WPH.map((d,k)=>`<span style="position:relative;display:inline-block"><img src="${d}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px"><a href="#" title="Remover" onclick="WPH.splice(${k},1);phr();return false" style="position:absolute;top:-6px;right:-6px;background:var(--k);color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;text-decoration:none;font-size:12px">×</a></span>`).join('')}
+function zoom(id,i,k){$('#lbi').src=fi(id).weeks[i].photos[k];$('#lb').style.display='flex'}
+function svW(id,ei){const x=fi(id);x.weeks=x.weeks||[];const g=k=>$('#w'+k).value,c2=v=>v===''?'':Math.max(0,Math.min(100,+v)),
+w={d:g('d')||today,adv:g('a'),att:g('t'),next:g('n'),p:c2(g('p')),r:c2(g('r')),photos:WPH.slice()};
+if(ei>=0)x.weeks[ei]=w;else x.weeks.push(w);x.weeks.sort((a,b)=>b.d.localeCompare(a.d));
+if(w.p!==''||w.r!==''){x.curve=x.curve||[];const c=x.curve.find(r=>r.d==w.d);if(c){if(w.p!=='')c.p=w.p;if(w.r!=='')c.r=w.r}else x.curve.push({d:w.d,p:w.p,r:w.r})}
+const L=x.weeks[0];x.adv=L.adv;x.att=L.att;x.next=L.next;if(L.r!=='')x.progress=L.r;x.upd=today;save();toast('Semana salva.');sem(id,-1)}
+function delW(id,i){const x=fi(id);x.weeks.splice(i,1);const L=x.weeks[0];if(L){x.adv=L.adv;x.att=L.att;x.next=L.next}save();sem(id,-1)}
+function curva(id){const x=fi(id);x.curve=x.curve||[];x.curve.sort((a,b)=>a.d.localeCompare(b.d));const c=x.curve,W=600,H=300,m=40,T=r=>new Date(r.d).getTime(),ts=c.map(T),a=Math.min(...ts),b=Math.max(...ts),
+X=r=>m+(b>a?(T(r)-a)/(b-a):.5)*(W-m*1.5),Y=v=>H-m-(v/100)*(H-m*1.5),f=d=>d.split('-').reverse().slice(0,2).join('/'),
+ln=(k,col,dash)=>{const pt=c.filter(r=>r[k]!==''&&r[k]!=null);return pt.length?`<polyline fill="none" stroke="${col}" stroke-width="2.5" ${dash?'stroke-dasharray="6 4"':''} points="${pt.map(r=>X(r)+','+Y(+r[k])).join(' ')}"/>`+pt.map(r=>`<circle cx="${X(r)}" cy="${Y(+r[k])}" r="3.5" fill="${col}"/>`).join(''):''};
+const svg=c.length?`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${[0,25,50,75,100].map(g=>`<line x1="${m}" x2="${W-m/2}" y1="${Y(g)}" y2="${Y(g)}" stroke="#DCE1E2"/><text x="4" y="${Y(g)+4}" font-size="11" fill="#4D5B64">${g}%</text>`).join('')}${c.map(r=>`<text x="${X(r)}" y="${H-m+16}" font-size="10" text-anchor="middle" fill="#4D5B64">${f(r.d)}</text>`).join('')}${ln('p','#6B6F6F',1)}${ln('r','#1C2230')}</svg><div class="bar" style="gap:16px"><span><b style="color:#6B6F6F">- - -</b> Previsto</span><span><b>——</b> Realizado</span></div>`:'<p>Adicione datas com o percentual previsto e realizado para gerar a curva.</p>';
+open_(`<h3>Curva S · ${E(x.name)}</h3>${svg}<div class="wrap"><table><tr><th>Data</th><th>Previsto (%)</th><th>Realizado (%)</th><th></th></tr>${c.map((r,i)=>`<tr><td><input type="date" value="${r.d}" onchange="cv('${id}',${i},'d',this.value)"></td><td><input type="number" min="0" max="100" value="${r.p}" style="width:80px" onchange="cv('${id}',${i},'p',this.value)"></td><td><input type="number" min="0" max="100" value="${r.r}" style="width:80px" onchange="cv('${id}',${i},'r',this.value)"></td><td><button class="b" onclick="fi('${id}').curve.splice(${i},1);save();curva('${id}')">Remover</button></td></tr>`).join('')}
+<tr><td><input type="date" id="cd" value="${today}"></td><td><input type="number" min="0" max="100" id="cp" style="width:80px"></td><td><input type="number" min="0" max="100" id="cr" style="width:80px"></td><td><button class="b p" onclick="addC('${id}')">Adicionar</button></td></tr></table></div>
+<div class="bar" style="margin-top:16px"><button class="b" onclick="${P().some(p=>p.id==id)?'proj':'est'}('${id}')">Abrir cadastro</button><button class="b" onclick="close_()">Fechar</button></div>`)}
+const cl=v=>v===''?'':Math.max(0,Math.min(100,+v));
+function cv(id,i,k,v){fi(id).curve[i][k]=k=='d'?v:cl(v);save();curva(id)}
+function addC(id){if(!$('#cd').value)return;fi(id).curve.push({d:$('#cd').value,p:cl($('#cp').value),r:cl($('#cr').value)});save();curva(id)}
+function rmC(i){if(S.team.length<2)return toast('A equipe precisa ter ao menos um colaborador.');
+if(P().some(x=>x.owner==i)||S.studies.some(x=>x.owner==i))return toast('Mova os projetos e estudos de '+S.team[i]+' para outro colaborador antes de remover.');
+S.team.splice(i,1);P().concat(S.studies).forEach(x=>{if(x.owner>i)x.owner--});save();go('cfg')}
+function xp(){const r=[['Projeto','Cliente','Responsável','Início','Prazo','Prioridade','Status','Avanço %','Risco']].concat(P().map(x=>[x.name,x.client,S.team[x.owner],x.start,x.end,x.prio,x.status,x.progress,x.risk]));
+const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');(window.claude?claude.use('downloads'):Promise.resolve(null)).then(d=>{if(!d)return toast('Exportação indisponível neste modo.');d.save({filename:'projetos.csv',data:csv}).catch(e=>{if(e&&e.code!='declined')toast('Não foi possível exportar.')})})}
+
+const J=o=>JSON.stringify(o,(k,v)=>v&&typeof v=='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort()):v);
+function put(path,obj){const o=JSON.parse(JSON.stringify(obj)),j=J(o);if(last[path]===j)return;last[path]=j;pend[path]=(pend[path]||0)+1;
+q[path]=(q[path]||Promise.resolve()).catch(()=>{}).then(()=>DB.doc(path).set(o)).catch(e=>{delete last[path];toast(e&&e.code=='invalid_argument'?'Sem permissão para editar.':'Não foi possível salvar.')}).then(()=>{pend[path]--})}
+function sync(){if(!ready)return;P().forEach(x=>put('projects/'+x.id,x));S.studies.forEach(x=>put('studies/'+x.id,x));
+const ids=new Set(P().map(x=>'projects/'+x.id).concat(S.studies.map(x=>'studies/'+x.id)));
+Object.keys(last).filter(k=>/^(projects|studies)\//.test(k)&&!ids.has(k)).forEach(k=>{delete last[k];pend[k]=(pend[k]||0)+1;DB.doc(k).delete().catch(()=>toast('Não foi possível excluir.')).then(()=>{pend[k]--})});
+put('meta/main',{team:S.team,cols:S.cols});put('data/users/'+ME+'/demands',{list:S.demands})}
+function impAsk(){const L=LOC;if(!L||!((L.projects||[]).length+(L.studies||[]).length+(L.demands||[]).length))return toast('Não há dados salvos neste navegador para importar.');
+open_(`<h3>Importar dados deste navegador</h3><p>Serão adicionados ${(L.projects||[]).length} projetos, ${(L.studies||[]).length} estudos e ${(L.demands||[]).length} demandas pessoais (visíveis só para você). Itens já importados não são duplicados.</p><div class="bar"><button class="b p" onclick="impGo()">Importar</button><button class="b" onclick="close_()">Cancelar</button></div>`)}
+function impGo(){const L=LOC,ids=new Set(P().concat(S.studies).map(x=>x.id));
+if(!P().length&&!S.studies.length){S.team=L.team||S.team;S.cols=L.cols||S.cols}
+(L.projects||[]).forEach(x=>{if(!ids.has(x.id)){x.t=x.t||Date.now();P().push(x)}});
+(L.studies||[]).forEach(x=>{if(!ids.has(x.id)){x.t=x.t||Date.now();S.studies.push(x)}});
+const di=new Set(S.demands.map(d=>d.id));(L.demands||[]).forEach(d=>{if(!di.has(d.id))S.demands.push(d)});
+save();close_();toast('Importação concluída.')}
+(async()=>{
+try{LOC=JSON.parse(localStorage.getItem('ctrl-eng'))}catch(e){}
+try{if(SHARED&&window.claude){DB=await claude.use('db');const U=await claude.use('user');ME=U?await U.id():null}}catch(e){DB=null}
+if(!DB||!ME){DB=null;go('dash');return}
+S={team:['Colaborador 1','Colaborador 2','Colaborador 3','Colaborador 4'],cols:[{n:'Não iniciada'},{n:'Em andamento'},{n:'Concluída',f:1},{n:'Cancelada',f:1}],projects:[],studies:[],demands:[]};
+$('#v').textContent='Carregando…';
+const seen={},got=k=>{seen[k]=1;if(!ready&&Object.keys(seen).length==4)ready=true;if(ready&&$('#md').style.display!='flex')go(view)},
+err=()=>toast('Falha ao carregar os dados compartilhados.'),
+srt=(a,b)=>(a.t||0)-(b.t||0)||String(a.name).localeCompare(b.name);
+['projects','studies'].forEach(c=>DB.collection(c).onSnapshot(sn=>{const loc=S[c]||[],out=[];
+Object.keys(last).filter(k=>k.startsWith(c+'/')&&!pend[k]).forEach(k=>delete last[k]);
+sn.docs.forEach(d=>{const k=c+'/'+d.id;if(pend[k]){const l=loc.find(x=>x.id==d.id);if(l)out.push(l);return}const v=d.data();last[k]=J(v);out.push(v)});
+loc.forEach(l=>{if(pend[c+'/'+l.id]&&!out.includes(l))out.push(l)});
+S[c]=out.sort(srt);got(c)},err));
+DB.doc('meta/main').onSnapshot(sn=>{if(sn.exists&&!pend['meta/main']){const v=sn.data();S.team=v.team;S.cols=v.cols;last['meta/main']=J(v)}got('m')},err);
+const dpath='data/users/'+ME+'/demands';
+DB.doc(dpath).onSnapshot(sn=>{if(sn.exists&&!pend[dpath]){S.demands=sn.data().list||[];last[dpath]=J(sn.data())}got('d')},err);
+})();
+</script></body></html>
