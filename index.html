@@ -2,6 +2,7 @@
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Controle - Engenharia</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{color-scheme:light;--k:#1C2230;--g:#4D5B64;--l:#DCE1E2;--w:#fff;--t:#F1F3F3;--m:#98A3A5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -189,11 +190,13 @@ S.team.splice(i,1);P().concat(S.studies).forEach(x=>{if(x.owner>i)x.owner--});sa
 function xp(){const r=[['Projeto','Cliente','Responsável','Início','Prazo','Prioridade','Status','Avanço %','Risco']].concat(P().map(x=>[x.name,x.client,S.team[x.owner],x.start,x.end,x.prio,x.status,x.progress,x.risk]));
 const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='projetos.csv';a.click()}
 
-const SB_URL='https://tjnpuwmfxmrgknyuzpyx.supabase.co/rest/v1/',SB_TABLE='Projetos',SB_KEY='sb_publishable_K6BbEhDXUOTNdcetlyuCnA_iDGZ59-5';
+const SB_PROJECT='https://tjnpuwmfxmrgknyuzpyx.supabase.co',SB_TABLE='Projetos',SB_KEY='sb_publishable_K6BbEhDXUOTNdcetlyuCnA_iDGZ59-5';
 const SQL_COLS="alter table public.\"Projetos\" add column if not exists tipo text default 'projeto', add column if not exists dados jsonb default '{}'::jsonb;\nnotify pgrst, 'reload schema';",
 SQL_RLS="alter table public.\"Projetos\" enable row level security;\ncreate policy \"acesso_site\" on public.\"Projetos\" for all to anon using (true) with check (true);";
-async function sb(m,q,b){const r=await fetch(SB_URL+SB_TABLE+q,{method:m,headers:{apikey:SB_KEY,'Content-Type':'application/json',Prefer:'return=representation'},body:b?JSON.stringify(b):undefined});
-const t=await r.text();if(!r.ok){let j={};try{j=JSON.parse(t)}catch(e){}console.error('Supabase',m,q,r.status,t);throw new Error([r.status,j.code,j.message||t.slice(0,200),j.details,j.hint].filter(Boolean).join(' | '))}return t?JSON.parse(t):null}
+const supabaseClient=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SB_PROJECT,SB_KEY):null;
+window.supabaseClient=supabaseClient;
+function chk(r){if(r.error){console.error('Supabase erro:',r.error);throw new Error([r.error.code,r.error.message,r.error.details,r.error.hint].filter(Boolean).join(' | '))}return r.data}
+function tb(){if(!supabaseClient)throw new Error('A biblioteca Supabase JS não carregou. Verifique a conexão com a internet ou bloqueadores de conteúdo.');return supabaseClient.from(SB_TABLE)}
 const sbItems=()=>{const a=P().map(o=>({t:'projeto',o,k:'projeto:'+o.id}));if(EXT){S.studies.forEach(o=>a.push({t:'estudo',o,k:'estudo:'+o.id}));S.demands.forEach(o=>a.push({t:'demanda',o,k:'demanda:'+o.id}));a.push({t:'config',o:cfgO,k:'config'})}return a};
 function payload(it){const o=it.o,t=it.t;
 if(t=='projeto'||t=='estudo'){const {id,dbid,name,client,status,progress,owner,...rest}=o;const b={nome:name,cliente:client||'',status,progresso:Math.round(+progress||0),responsavel:S.team[owner]||''};if(EXT){b.tipo=t;b.dados=rest}return b}
@@ -201,10 +204,10 @@ if(t=='demanda'){const {id,dbid,title,status,...rest}=o;const b={nome:title,clie
 return {nome:'config',cliente:'',status:'',progresso:0,responsavel:'',tipo:'config',dados:{team:S.team,cols:S.cols}}}
 async function pass(){const cur=new Set();
 for(const it of sbItems()){cur.add(it.k);const pl=payload(it),j=JSON.stringify(pl);
-if(!it.o.dbid){const r=await sb('POST','',pl);it.o.dbid=r[0].id;dbm[it.k]=r[0].id;last[it.k]=j}
-else if(last[it.k]!==j){const r=await sb('PATCH','?id=eq.'+it.o.dbid,pl);if(!r||!r.length)throw new Error('alteração não aplicada (verifique as políticas RLS de update)');last[it.k]=j}}
-for(const k of Object.keys(last))if(!cur.has(k)){const id=dbm[k];if(id)await sb('DELETE','?id=eq.'+id);delete last[k];delete dbm[k]}}
-async function load(){const rows=await sb('GET','?select=*&order=id.asc');EXT=rows.length?('tipo' in rows[0]):true;if(!EXT)toast('Colunas "tipo" e "dados" não encontradas: modo básico. Veja Configurações.');S=blank();last={};dbm={};cfgO={};
+if(!it.o.dbid){const r=chk(await tb().insert(pl).select());it.o.dbid=r[0].id;dbm[it.k]=r[0].id;last[it.k]=j}
+else if(last[it.k]!==j){const r=chk(await tb().update(pl).eq('id',it.o.dbid).select());if(!r||!r.length)throw new Error('alteração não aplicada (verifique as políticas RLS de update)');last[it.k]=j}}
+for(const k of Object.keys(last))if(!cur.has(k)){const id=dbm[k];if(id)chk(await tb().delete().eq('id',id));delete last[k];delete dbm[k]}}
+async function load(){const rows=chk(await tb().select('*').order('id',{ascending:true}));console.log('Supabase conectado');console.log('Projetos carregados:',rows);EXT=rows.length?('tipo' in rows[0]):true;if(!EXT)toast('Colunas "tipo" e "dados" não encontradas: modo básico. Veja Configurações.');S=blank();last={};dbm={};cfgO={};
 const cf=EXT&&rows.find(r=>r.tipo=='config');if(cf){const d=cf.dados||{};if(d.team)S.team=d.team;if(d.cols)S.cols=d.cols;cfgO.dbid=cf.id}
 const own=n=>{let i=S.team.indexOf(n);if(i<0&&n){S.team.push(n);i=S.team.length-1}return Math.max(i,0)};
 rows.forEach(r=>{const t=EXT?(r.tipo||'projeto'):'projeto',d=(EXT&&r.dados)||{},b={id:'d'+r.id,dbid:r.id};
