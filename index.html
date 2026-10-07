@@ -46,22 +46,13 @@ const $=s=>document.querySelector(s),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'
 const ST=['Stand By','Não Iniciado','Em Andamento','Concluído','Cancelado'],SC=['sb','ni','ea','ok','ca'],PR=['Baixa','Média','Alta','Crítica'];
 const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)},today=day(0),uid=()=>Math.random().toString(36).slice(2,9);
 const diff=d=>Math.round((new Date(d)-new Date(today))/864e5);
-let S;try{S=JSON.parse(localStorage.getItem('ctrl-eng'))}catch(e){}
-if(!S)S={team:['Colaborador 1','Colaborador 2','Colaborador 3','Colaborador 4'],
-projects:[{id:uid(),name:'Projeto A',client:'Cliente Alfa',owner:0,start:day(-30),end:day(20),prio:'Alta',status:'Em Andamento',desc:'',progress:55,adv:'',att:'',next:'',risk:'Médio',acts:[{t:'Levantamento',o:0,s:day(-30),e:day(-10),st:'Concluída',p:100}]},
-{id:uid(),name:'Projeto B',client:'Cliente Beta',owner:0,start:day(-60),end:day(-5),prio:'Crítica',status:'Em Andamento',desc:'',progress:80,adv:'',att:'',next:'',risk:'Alto',acts:[]},
-{id:uid(),name:'Projeto C',client:'Cliente Gama',owner:1,start:day(-10),end:day(60),prio:'Média',status:'Não Iniciado',desc:'',progress:5,adv:'',att:'',next:'',risk:'Baixo',acts:[]},
-{id:uid(),name:'Projeto D',client:'Cliente Delta',owner:2,start:day(-90),end:day(-40),prio:'Baixa',status:'Concluído',done:day(-45),desc:'',progress:100,adv:'',att:'',next:'',risk:'Baixo',acts:[]},
-{id:uid(),name:'Projeto E',client:'Cliente Épsilon',owner:3,start:day(0),end:day(90),prio:'Média',status:'Stand By',desc:'',progress:0,adv:'',att:'',next:'',risk:'Baixo',acts:[]}],
-demands:[{id:uid(),created:day(-3),title:'Revisar memorial descritivo',desc:'',prio:'Alta',due:day(2),status:'Em andamento',hist:['Criada'],com:[]},
-{id:uid(),created:day(-8),title:'Emitir relatório de medição',desc:'',prio:'Média',due:day(-1),status:'Não iniciada',hist:['Criada'],com:[]},
-{id:uid(),created:day(-12),title:'Atualizar cronograma',desc:'',prio:'Baixa',due:day(14),status:'Concluída',hist:['Criada'],com:[],done:day(-2)}]};
+const blank=()=>({team:['Colaborador 1','Colaborador 2','Colaborador 3','Colaborador 4'],projects:[],studies:[],demands:[],cols:[{n:'Não iniciada'},{n:'Em andamento'},{n:'Concluída',f:1},{n:'Cancelada',f:1}]});
+let S=blank();
 S.studies=S.studies||[];
 S.cols=S.cols||[{n:'Não iniciada'},{n:'Em andamento'},{n:'Concluída',f:1},{n:'Cancelada',f:1}];
 const DSn=()=>S.cols.map(c=>c.n),fin=n=>!!(S.cols.find(c=>c.n==n)||{}).f;
-const SHARED=false; // compartilhamento desativado por enquanto (mude para true para reativar)
-let DB,ME,ready=false,LOC=null,last={},q={},pend={};
-const save=()=>{if(DB){sync();return}try{localStorage.setItem('ctrl-eng',JSON.stringify(S))}catch(e){toast('Armazenamento do navegador cheio: remova algumas fotos antigas.')}};
+let EXT=true,LOC=null,last={},dbm={},cfgO={},Q=Promise.resolve(),dirty=false;
+const save=()=>{if(dirty)return;dirty=true;Q=Q.then(async()=>{dirty=false;await pass()}).catch(e=>{dirty=false;if(EXT&&/PGRST204|42703/.test(e.message)){EXT=false;last={};toast('Colunas "tipo" e "dados" não encontradas: salvando em modo básico. Veja Configurações.');save();return}toast('Erro ao salvar no Supabase: '+e.message)})};
 let view='dash',dmode='kanban',F={q:'',p:'',s:'',d:''},CF={q:'',y:'',c:''};
 const late=p=>!['Concluído','Cancelado'].includes(p.status)&&p.end<today;
 const health=p=>late(p)||(p.risk=='Alto'&&p.progress<70)?'vm':(!['Concluído','Cancelado'].includes(p.status)&&(diff(p.end)<=7||p.risk=='Alto'))?'am':'vd';
@@ -95,12 +86,11 @@ return `<h2>Demandas Pessoais</h2><div class="bar"><button class="b p" onclick="
 (dmode=='kanban'?`<div class="col">${DSn().map((s,ci)=>`<div class="lane" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="mvD(${ci})"><h3><span>${E(s)}</span><span>${l.filter(x=>x.status==s).length} <a href="#" title="Renomear coluna" onclick="colEd(${ci});return false">✎</a> <a href="#" title="Excluir coluna" onclick="colRm(${ci});return false">×</a></span></h3>${l.filter(x=>x.status==s).map(card).join('')}<input placeholder="+ Adicionar cartão" style="width:100%" onkeydown="if(event.key=='Enter')qa(${ci},this.value)"></div>`).join('')}</div>`:
 `<div class="card wrap"><table><tr><th></th><th>Título</th><th>Criada</th><th>Prioridade</th><th>Prazo</th><th>Status</th></tr>${l.map(x=>`<tr onclick="dem('${x.id}')" style="cursor:pointer"><td><span class="dot ${dl(x)}"></span></td><td>${E(x.title)}</td><td>${x.created}</td><td>${x.prio}</td><td>${x.due}</td><td>${x.status}</td></tr>`).join('')}</table></div>`)}
 let dd;
-function toast(m){const t=document.createElement('div');t.textContent=m;t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--k);color:var(--w);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%';document.body.appendChild(t);setTimeout(()=>t.remove(),3500)}
+function toast(m){const t=document.createElement('div');t.textContent=m;t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--k);color:var(--w);padding:10px 16px;border-radius:10px;z-index:20;max-width:90%';document.body.appendChild(t);setTimeout(()=>t.remove(),Math.max(3500,m.length*70))}
 function colForm(i){open_(`<h3>${i<0?'Nova coluna':'Renomear coluna'}</h3><label>Nome da coluna</label><input id="cn" value="${i<0?'':E(S.cols[i].n)}"><div class="bar" style="margin-top:16px"><button class="b p" onclick="colSv(${i})">Salvar</button><button class="b" onclick="close_()">Fechar</button></div>`);$('#cn').focus()}
 function colAdd(){colForm(-1)}function colEd(i){colForm(i)}
 function colSv(i){const n=$('#cn').value.trim();if(!n)return toast('Digite um nome para a coluna.');const o=i<0?'':S.cols[i].n;if(n!=o&&DSn().includes(n))return toast('Já existe uma coluna com esse nome.');
 if(i<0)S.cols.push({n});else{D().forEach(x=>{if(x.status==o)x.status=n});if(F.s==o)F.s='';S.cols[i].n=n}save();close_()}
-function wipe(){open_(`<h3>Apagar todos os dados?</h3><p>Essa ação não pode ser desfeita.</p><div class="bar"><button class="b p" onclick="localStorage.removeItem('ctrl-eng');location.reload()">Apagar</button><button class="b" onclick="close_()">Cancelar</button></div>`)}
 function colRm(i){if(S.cols.length<2)return toast('É preciso manter ao menos uma coluna.');if(D().some(x=>x.status==S.cols[i].n))return toast('Mova os cartões desta coluna para outra antes de excluí-la.');S.cols.splice(i,1);save();go('dp')}
 function mvD(ci){const s=S.cols[ci].n,x=D().find(d=>d.id==dd);if(x&&x.status!=s){x.hist.push(`${today}: status → ${s}`);x.status=s;if(fin(s))x.done=x.done||today;else delete x.done;save()}go('dp')}
 function qa(ci,v){const s=S.cols[ci].n;v=v.trim();if(!v)return;D().push({id:uid(),created:today,title:v,desc:'',prio:'Média',due:day(7),status:s,hist:['Criada em '+today],com:[]});save();go('dp')}
@@ -159,7 +149,7 @@ return `<h2>Indicadores</h2><div class="grid">${k.map(x=>`<div class="card kpi">
 <div class="grid g2"><div class="card"><h3>Projetos e estudos entregues por colaborador</h3>${hb(S.team.map((n,i)=>[n,c.filter(x=>x.owner==i).length]))}</div>
 <div class="card"><h3>Carga de trabalho (projetos e estudos ativos)</h3>${hb(S.team.map((n,i)=>[n,all.filter(x=>x.owner==i&&!['Concluído','Cancelado'].includes(x.status)).length]))}</div></div><div class="card wrap"><h3>Equipe</h3>${teamTable()}</div>`}
 function cfg(){return `<h2>Configurações</h2><div class="card"><h3>Equipe</h3>${S.team.map((n,i)=>`<div class="bar" style="margin-bottom:8px"><input value="${E(n)}" oninput="S.team[${i}]=this.value" onchange="S.team[${i}]=this.value;save()"><button class="b" onclick="rmC(${i})">Remover</button></div>`).join('')}<button class="b p" onclick="S.team.push('Colaborador '+(S.team.length+1));save();go('cfg')">Adicionar colaborador</button></div><br>
-<div class="card"><h3>Dados</h3><p>${DB?'Dados compartilhados com o time. As demandas pessoais ficam privadas para cada pessoa.':'Salvos neste navegador (modo local).'}</p><button class="b" onclick="xp()">Exportar projetos (CSV/Excel)</button> ${DB?'<button class="b" onclick="impAsk()">Importar dados deste navegador</button>':'<button class="b" onclick="wipe()">Apagar dados</button>'}</div>`}
+<div class="card"><h3>Dados</h3><p>${EXT?'Dados salvos no Supabase.':'Modo básico: só os campos originais da tabela são salvos. Rode o SQL abaixo no Supabase para salvar tudo.'}</p><button class="b" onclick="xp()">Exportar projetos (CSV/Excel)</button> ${LOC&&(LOC.projects||[]).length?'<button class="b" onclick="impAsk()">Importar dados antigos do navegador</button>':''}${EXT?'':'<pre style="white-space:pre-wrap;overflow-x:auto">'+E(SQL_COLS)+'</pre>'}</div>`}
 function sem(id,ei){const x=fi(id);x.weeks=x.weeks||[];x.weeks.sort((a,b)=>b.d.localeCompare(a.d));
 WPH=ei>=0&&x.weeks[ei].photos?x.weeks[ei].photos.slice():[];
 const e=ei>=0?x.weeks[ei]:null,f=e||(x.weeks.length?{d:today,adv:'',att:'',next:'',p:'',r:''}:{d:today,adv:x.adv||'',att:x.att||'',next:x.next||'',p:'',r:''}),fd=d=>d.split('-').reverse().join('/');
@@ -197,39 +187,40 @@ function rmC(i){if(S.team.length<2)return toast('A equipe precisa ter ao menos u
 if(P().some(x=>x.owner==i)||S.studies.some(x=>x.owner==i))return toast('Mova os projetos e estudos de '+S.team[i]+' para outro colaborador antes de remover.');
 S.team.splice(i,1);P().concat(S.studies).forEach(x=>{if(x.owner>i)x.owner--});save();go('cfg')}
 function xp(){const r=[['Projeto','Cliente','Responsável','Início','Prazo','Prioridade','Status','Avanço %','Risco']].concat(P().map(x=>[x.name,x.client,S.team[x.owner],x.start,x.end,x.prio,x.status,x.progress,x.risk]));
-const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');(window.claude?claude.use('downloads'):Promise.resolve(null)).then(d=>{if(!d)return toast('Exportação indisponível neste modo.');d.save({filename:'projetos.csv',data:csv}).catch(e=>{if(e&&e.code!='declined')toast('Não foi possível exportar.')})})}
+const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='projetos.csv';a.click()}
 
-const J=o=>JSON.stringify(o,(k,v)=>v&&typeof v=='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort()):v);
-function put(path,obj){const o=JSON.parse(JSON.stringify(obj)),j=J(o);if(last[path]===j)return;last[path]=j;pend[path]=(pend[path]||0)+1;
-q[path]=(q[path]||Promise.resolve()).catch(()=>{}).then(()=>DB.doc(path).set(o)).catch(e=>{delete last[path];toast(e&&e.code=='invalid_argument'?'Sem permissão para editar.':'Não foi possível salvar.')}).then(()=>{pend[path]--})}
-function sync(){if(!ready)return;P().forEach(x=>put('projects/'+x.id,x));S.studies.forEach(x=>put('studies/'+x.id,x));
-const ids=new Set(P().map(x=>'projects/'+x.id).concat(S.studies.map(x=>'studies/'+x.id)));
-Object.keys(last).filter(k=>/^(projects|studies)\//.test(k)&&!ids.has(k)).forEach(k=>{delete last[k];pend[k]=(pend[k]||0)+1;DB.doc(k).delete().catch(()=>toast('Não foi possível excluir.')).then(()=>{pend[k]--})});
-put('meta/main',{team:S.team,cols:S.cols});put('data/users/'+ME+'/demands',{list:S.demands})}
-function impAsk(){const L=LOC;if(!L||!((L.projects||[]).length+(L.studies||[]).length+(L.demands||[]).length))return toast('Não há dados salvos neste navegador para importar.');
-open_(`<h3>Importar dados deste navegador</h3><p>Serão adicionados ${(L.projects||[]).length} projetos, ${(L.studies||[]).length} estudos e ${(L.demands||[]).length} demandas pessoais (visíveis só para você). Itens já importados não são duplicados.</p><div class="bar"><button class="b p" onclick="impGo()">Importar</button><button class="b" onclick="close_()">Cancelar</button></div>`)}
-function impGo(){const L=LOC,ids=new Set(P().concat(S.studies).map(x=>x.id));
-if(!P().length&&!S.studies.length){S.team=L.team||S.team;S.cols=L.cols||S.cols}
-(L.projects||[]).forEach(x=>{if(!ids.has(x.id)){x.t=x.t||Date.now();P().push(x)}});
-(L.studies||[]).forEach(x=>{if(!ids.has(x.id)){x.t=x.t||Date.now();S.studies.push(x)}});
-const di=new Set(S.demands.map(d=>d.id));(L.demands||[]).forEach(d=>{if(!di.has(d.id))S.demands.push(d)});
-save();close_();toast('Importação concluída.')}
-(async()=>{
-try{LOC=JSON.parse(localStorage.getItem('ctrl-eng'))}catch(e){}
-try{if(SHARED&&window.claude){DB=await claude.use('db');const U=await claude.use('user');ME=U?await U.id():null}}catch(e){DB=null}
-if(!DB||!ME){DB=null;go('dash');return}
-S={team:['Colaborador 1','Colaborador 2','Colaborador 3','Colaborador 4'],cols:[{n:'Não iniciada'},{n:'Em andamento'},{n:'Concluída',f:1},{n:'Cancelada',f:1}],projects:[],studies:[],demands:[]};
-$('#v').textContent='Carregando…';
-const seen={},got=k=>{seen[k]=1;if(!ready&&Object.keys(seen).length==4)ready=true;if(ready&&$('#md').style.display!='flex')go(view)},
-err=()=>toast('Falha ao carregar os dados compartilhados.'),
-srt=(a,b)=>(a.t||0)-(b.t||0)||String(a.name).localeCompare(b.name);
-['projects','studies'].forEach(c=>DB.collection(c).onSnapshot(sn=>{const loc=S[c]||[],out=[];
-Object.keys(last).filter(k=>k.startsWith(c+'/')&&!pend[k]).forEach(k=>delete last[k]);
-sn.docs.forEach(d=>{const k=c+'/'+d.id;if(pend[k]){const l=loc.find(x=>x.id==d.id);if(l)out.push(l);return}const v=d.data();last[k]=J(v);out.push(v)});
-loc.forEach(l=>{if(pend[c+'/'+l.id]&&!out.includes(l))out.push(l)});
-S[c]=out.sort(srt);got(c)},err));
-DB.doc('meta/main').onSnapshot(sn=>{if(sn.exists&&!pend['meta/main']){const v=sn.data();S.team=v.team;S.cols=v.cols;last['meta/main']=J(v)}got('m')},err);
-const dpath='data/users/'+ME+'/demands';
-DB.doc(dpath).onSnapshot(sn=>{if(sn.exists&&!pend[dpath]){S.demands=sn.data().list||[];last[dpath]=J(sn.data())}got('d')},err);
-})();
+const SB_URL='https://tjnpuwmfxmrgknyuzpyx.supabase.co/rest/v1/',SB_TABLE='Projetos',SB_KEY='sb_publishable_K6BbEhDXUOTNdcetlyuCnA_iDGZ59-5';
+const SQL_COLS="alter table public.\"Projetos\" add column if not exists tipo text default 'projeto', add column if not exists dados jsonb default '{}'::jsonb;\nnotify pgrst, 'reload schema';",
+SQL_RLS="alter table public.\"Projetos\" enable row level security;\ncreate policy \"acesso_site\" on public.\"Projetos\" for all to anon using (true) with check (true);";
+async function sb(m,q,b){const r=await fetch(SB_URL+SB_TABLE+q,{method:m,headers:{apikey:SB_KEY,'Content-Type':'application/json',Prefer:'return=representation'},body:b?JSON.stringify(b):undefined});
+const t=await r.text();if(!r.ok){let j={};try{j=JSON.parse(t)}catch(e){}console.error('Supabase',m,q,r.status,t);throw new Error([r.status,j.code,j.message||t.slice(0,200),j.details,j.hint].filter(Boolean).join(' | '))}return t?JSON.parse(t):null}
+const sbItems=()=>{const a=P().map(o=>({t:'projeto',o,k:'projeto:'+o.id}));if(EXT){S.studies.forEach(o=>a.push({t:'estudo',o,k:'estudo:'+o.id}));S.demands.forEach(o=>a.push({t:'demanda',o,k:'demanda:'+o.id}));a.push({t:'config',o:cfgO,k:'config'})}return a};
+function payload(it){const o=it.o,t=it.t;
+if(t=='projeto'||t=='estudo'){const {id,dbid,name,client,status,progress,owner,...rest}=o;const b={nome:name,cliente:client||'',status,progresso:Math.round(+progress||0),responsavel:S.team[owner]||''};if(EXT){b.tipo=t;b.dados=rest}return b}
+if(t=='demanda'){const {id,dbid,title,status,...rest}=o;const b={nome:title,cliente:'',status,progresso:0,responsavel:''};if(EXT){b.tipo=t;b.dados=rest}return b}
+return {nome:'config',cliente:'',status:'',progresso:0,responsavel:'',tipo:'config',dados:{team:S.team,cols:S.cols}}}
+async function pass(){const cur=new Set();
+for(const it of sbItems()){cur.add(it.k);const pl=payload(it),j=JSON.stringify(pl);
+if(!it.o.dbid){const r=await sb('POST','',pl);it.o.dbid=r[0].id;dbm[it.k]=r[0].id;last[it.k]=j}
+else if(last[it.k]!==j){const r=await sb('PATCH','?id=eq.'+it.o.dbid,pl);if(!r||!r.length)throw new Error('alteração não aplicada (verifique as políticas RLS de update)');last[it.k]=j}}
+for(const k of Object.keys(last))if(!cur.has(k)){const id=dbm[k];if(id)await sb('DELETE','?id=eq.'+id);delete last[k];delete dbm[k]}}
+async function load(){const rows=await sb('GET','?select=*&order=id.asc');EXT=rows.length?('tipo' in rows[0]):true;if(!EXT)toast('Colunas "tipo" e "dados" não encontradas: modo básico. Veja Configurações.');S=blank();last={};dbm={};cfgO={};
+const cf=EXT&&rows.find(r=>r.tipo=='config');if(cf){const d=cf.dados||{};if(d.team)S.team=d.team;if(d.cols)S.cols=d.cols;cfgO.dbid=cf.id}
+const own=n=>{let i=S.team.indexOf(n);if(i<0&&n){S.team.push(n);i=S.team.length-1}return Math.max(i,0)};
+rows.forEach(r=>{const t=EXT?(r.tipo||'projeto'):'projeto',d=(EXT&&r.dados)||{},b={id:'d'+r.id,dbid:r.id};
+if(t=='projeto')S.projects.push({start:today,end:day(30),prio:'Média',risk:'Baixo',desc:'',adv:'',att:'',next:'',acts:[],...d,...b,name:r.nome,client:r.cliente||'',status:r.status||ST[1],progress:r.progresso||0,owner:own(r.responsavel)});
+else if(t=='estudo')S.studies.push({start:today,end:day(30),prio:'Média',desc:'',...d,...b,name:r.nome,client:r.cliente||'',status:r.status||ST[1],owner:own(r.responsavel)});
+else if(t=='demanda')S.demands.push({created:today,desc:'',prio:'Média',due:day(7),hist:[],com:[],...d,...b,title:r.nome,status:r.status||S.cols[0].n})});
+sbItems().forEach(it=>{last[it.k]=JSON.stringify(payload(it));if(it.o.dbid)dbm[it.k]=it.o.dbid})}
+function fail(e){$('#v').innerHTML=`<h2>Não foi possível conectar ao Supabase</h2><div class="card"><p>${E(e.message)}</p><p>Verifique o nome da tabela (<b>${SB_TABLE}</b>), as políticas de acesso (RLS) para a chave pública e a conexão com a internet.</p><pre style="white-space:pre-wrap;overflow-x:auto">${E(SQL_RLS)}</pre><button class="b p" onclick="location.reload()">Tentar novamente</button></div>`}
+function impAsk(){const L=LOC;open_(`<h3>Importar dados antigos do navegador</h3><p>Serão enviados ao Supabase ${(L.projects||[]).length} projetos, ${(L.studies||[]).length} estudos e ${(L.demands||[]).length} demandas. Faça isso apenas uma vez, para não duplicar.</p><div class="bar"><button class="b p" onclick="impGo()">Importar</button><button class="b" onclick="close_()">Cancelar</button></div>`)}
+function impGo(){const L=LOC,m=i=>{const n=(L.team||[])[i];if(!n)return 0;let j=S.team.indexOf(n);if(j<0){S.team.push(n);j=S.team.length-1}return j};
+(L.cols||[]).forEach(c=>{if(!DSn().includes(c.n))S.cols.push(c)});
+(L.projects||[]).forEach(x=>{delete x.dbid;x.id=uid();x.owner=m(x.owner);P().push(x)});
+(L.studies||[]).forEach(x=>{delete x.dbid;x.id=uid();x.owner=m(x.owner);S.studies.push(x)});
+(L.demands||[]).forEach(x=>{delete x.dbid;x.id=uid();S.demands.push(x)});
+LOC=null;save();close_();toast('Importação enviada ao Supabase.')}
+(async()=>{try{LOC=JSON.parse(localStorage.getItem('ctrl-eng'))}catch(e){}
+go('dash');$('#v').innerHTML='<p>Carregando dados do Supabase…</p>';
+try{await load();go('dash')}catch(e){fail(e)}})();
 </script></body></html>
