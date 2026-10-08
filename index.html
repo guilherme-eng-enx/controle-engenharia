@@ -197,7 +197,7 @@ function rmC(i){if(S.team.length<2)return toast('A equipe precisa ter ao menos u
 if(P().some(x=>x.owner==i)||S.studies.some(x=>x.owner==i))return toast('Mova os projetos e estudos de '+S.team[i]+' para outro colaborador antes de remover.');
 S.team.splice(i,1);P().concat(S.studies).forEach(x=>{if(x.owner>i)x.owner--});save();go('cfg')}
 function xp(){const r=[['Projeto','Cliente','Responsável','Início','Prazo','Prioridade','Status','Avanço %','Risco']].concat(P().map(x=>[x.name,x.client,S.team[x.owner],x.start,x.end,x.prio,x.status,x.progress,x.risk]));
-const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');(window.claude?claude.use('downloads'):Promise.resolve(null)).then(d=>{if(!d)return toast('Exportação indisponível neste modo.');d.save({filename:'projetos.csv',data:csv}).catch(e=>{if(e&&e.code!='declined')toast('Não foi possível exportar.')})})}
+const csv='\ufeff'+r.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='projetos.csv';a.click()}
 
 const J=o=>JSON.stringify(o,(k,v)=>v&&typeof v=='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort()):v);
 function put(path,obj){const o=JSON.parse(JSON.stringify(obj)),j=J(o);if(last[path]===j)return;last[path]=j;pend[path]=(pend[path]||0)+1;
